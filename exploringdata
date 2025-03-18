@@ -1,0 +1,86 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
+
+# Create evaluation directory if it doesn't exist
+if not os.path.exists('evaluation'):
+    os.makedirs('evaluation')
+
+# Read the CSV file, add your link to the file
+df = pd.read_csv('/Users/yasinali/Desktop/BreastCancerData.csv')
+
+# Display the first few rows
+df = df.drop('Unnamed: 32', axis=1)
+print(df.head())
+
+# Step 1: Basic Information
+print("Shape of dataset:", df.shape)
+print("\nColumns:", df.columns.tolist())
+print("\nData types:\n", df.dtypes)
+print("\nFirst few rows:\n", df.head())
+
+# Step 2: Missing Values Analysis
+print("\nMissing values:\n", df.isnull().sum())
+print("\nMissing values percentage:\n", (df.isnull().sum() / len(df)) * 100)
+
+# Step 3: Basic Statistics
+print("\nNumerical columns summary:\n", df.describe())
+print("\nCategorical columns summary:\n", df.describe(include=['object']))
+
+def clean_dataset(df):
+    df_clean = df.copy()
+
+    # Handle missing values
+    # Example: Fill numeric columns with median
+    numeric_columns = df_clean.select_dtypes(include=[np.number]).columns
+    for col in numeric_columns:
+        df_clean[col] = df_clean[col].fillna(df_clean[col].median())
+
+    # Remove duplicates
+    df_clean = df_clean.drop_duplicates()
+
+    # Handle outliers (example using IQR method for numeric columns)
+    for col in numeric_columns:
+        Q1 = df_clean[col].quantile(0.25)
+        Q3 = df_clean[col].quantile(0.75)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+        df_clean[col] = df_clean[col].clip(lower=lower_bound, upper=upper_bound)
+    
+    return df_clean
+
+# Step 5: Data Visualization
+def plot_distributions(df, columns):
+    for col in columns:
+        plt.figure(figsize=(10, 6))
+        if df[col].dtype in ['int64', 'float64']:
+            sns.histplot(data=df, x=col)
+        else:
+            sns.countplot(data=df, x=col)
+        plt.title(f'Distribution of {col}')
+        plt.xticks(rotation=45)
+        plt.show()
+
+# Step 6: Correlation Analysis (for numeric columns)
+def plot_correlation_matrix(df):
+    numeric_df = df.select_dtypes(include=[np.number])
+    plt.figure(figsize=(12, 8))
+    sns.heatmap(numeric_df.corr(), annot=True, cmap='coolwarm', center=0)
+    plt.title('Correlation Matrix')
+    plt.show()
+
+# Apply cleaning
+df_clean = clean_dataset(df)
+
+# Compare original and cleaned dataset
+print("\nOriginal dataset shape:", df.shape)
+print("Cleaned dataset shape:", df_clean.shape)
+
+# Plot distributions for selected columns
+plot_distributions(df_clean, df_clean.columns[:5])  # First 5 columns as example
+
+# Plot correlation matrix
+plot_correlation_matrix(df_clean)
